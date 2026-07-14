@@ -98,6 +98,14 @@ export function saveKey(apiKeysInput) {
  * Returns all saved decrypted keys.
  */
 export function getKeys() {
+  // Fallback to secure environment variable if provided in cloud hosting (Vercel/Render/Railway)
+  if (process.env.OPENROUTER_API_KEY) {
+    return process.env.OPENROUTER_API_KEY
+      .split(/[\n,\s;]+/)
+      .map(k => k.trim())
+      .filter(k => k.length > 0);
+  }
+
   ensureDir();
   if (!fs.existsSync(STORE_PATH)) return [];
   try {
