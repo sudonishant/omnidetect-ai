@@ -1,0 +1,268 @@
+/* Google Fonts Import for clean modern fallback */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  /* Apple HIG Inspired Palette */
+  --bg-primary: #000000;
+  --bg-secondary: #0d0d0f;
+  --bg-glass: rgba(22, 22, 26, 0.72);
+  --bg-glass-hover: rgba(30, 30, 35, 0.82);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-glass-focus: #0a84ff; /* Apple System Blue */
+  
+  --accent-purple: #8526ee;
+  --accent-cyan: #0a84ff; /* macOS System Blue */
+  --accent-purple-glow: rgba(133, 38, 238, 0.15);
+  --accent-cyan-glow: rgba(10, 132, 255, 0.15);
+  
+  --color-ai: #ff453a; /* Apple System Red */
+  --color-ai-glow: rgba(255, 69, 58, 0.12);
+  --color-human: #30d158; /* Apple System Green */
+  --color-human-glow: rgba(48, 209, 88, 0.12);
+  --color-mixed: #ff9f0a; /* Apple System Orange */
+  --color-mixed-glow: rgba(255, 159, 10, 0.12);
+  
+  --text-primary: #ffffff;
+  --text-secondary: #aeaeae;
+  --text-muted: #8e8e93;
+
+  /* Font Families - system fonts first for true native Apple feel */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Compact", "Outfit", sans-serif;
+  --font-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, "JetBrains Mono", monospace;
+  
+  --header-height: 64px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(10, 132, 255, 0.07) 0%, transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(133, 38, 238, 0.07) 0%, transparent 45%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-glass);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+}
+
+/* Translucent Apple materials */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border-glass);
+  border-radius: 18px;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.glass-panel:hover {
+  border-color: rgba(10, 132, 255, 0.2);
+  background: var(--bg-glass-hover);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 22px;
+  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(10, 132, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+/* Premium Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  text-decoration: none;
+  gap: 8px;
+  border: none;
+  user-select: none;
+}
+
+.btn-primary {
+  background: var(--accent-cyan);
+  color: #ffffff;
+  box-shadow: 0 4px 12px 0 var(--accent-cyan-glow);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #3399ff;
+  box-shadow: 0 6px 18px 0 rgba(10, 132, 255, 0.4);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Forms */
+.form-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--border-glass-focus);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15);
+}
+
+/* Tab Bar container (Apple Pill) */
+.tabs-container {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: rgba(120, 120, 128, 0.24);
+  border-radius: 12px;
+  border: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.tab-btn {
+  padding: 6px 14px;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  font-family: var(--font-sans);
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Animations */
+@keyframes shiver {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-0.5px, 0.5px); }
+  75% { transform: translate(0.5px, -0.5px); }
+}
+
+.shiver-effect {
+  animation: shiver 0.15s infinite;
+}
+
+/* Responsive Grid layouts */
+.detector-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (min-width: 992px) {
+  .detector-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+  }
+}
+
+/* Mobile Responsive Hide/Show Helpers */
+.desktop-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.mobile-nav-bar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-nav {
+    display: none !important;
+  }
+  
+  .mobile-nav-bar {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 74px;
+    background: rgba(18, 18, 22, 0.85);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border-top: 1px solid var(--border-glass);
+    z-index: 9999;
+    align-items: center;
+    justify-content: space-around;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+}

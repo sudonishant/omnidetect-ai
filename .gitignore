@@ -1,0 +1,32 @@
+# Dependency folders
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Frontend builds
+frontend/dist/
+
+# Local databases and SQLite cache files
+backend/data/*.db
+backend/data/*.sqlite
+backend/data/*.sqlite3
+backend/data/*.db-journal
+backend/data/*.db-wal
+backend/data/*.db-shm
+
+# Env and keys secrets
+.env
+backend/.env
+frontend/.env
+*.key
+*.pem
+backend/scripts/save_actual_keys.js
+backend/config/secure_store.json
+
+# IDEs & System files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.gemini/
+*.log
