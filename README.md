@@ -6,6 +6,8 @@
 [![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org/)
 
+🔗 **Live Web Workspace: [omnidetect.vercel.app](https://omnidetect.vercel.app/)**
+
 An advanced, full-stack cybersecurity forensics and media telemetry platform designed to extract deep metadata parameters, geo-coordinates, structure anomalies, and editing traces from uploaded files. **OmniDetect AI** provides a unified diagnostic pipeline for images, audio tracks, PDFs, and Word documents, alerting auditors to potential manipulation.
 
 ```mermaid
