@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 250" width="100%" height="100%">
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#060908"/>
+  
+  <!-- Cyber Grid Lines -->
+  <g stroke="#0f2117" stroke-width="0.75">
+    <path d="M 0 50 L 800 50 M 0 100 L 800 100 M 0 150 L 800 150 M 0 200 L 800 200"/>
+    <path d="M 100 0 L 100 250 M 200 0 L 200 250 M 300 0 L 300 250 M 400 0 L 400 250 M 500 0 L 500 250 M 600 0 L 600 250 M 700 0 L 700 250"/>
+  </g>
+
+  <!-- Glowing Radar Sweep Animation -->
+  <g transform="translate(120, 125)">
+    <circle r="80" fill="none" stroke="#10b981" stroke-width="1.5" opacity="0.25"/>
+    <circle r="55" fill="none" stroke="#10b981" stroke-width="1" opacity="0.45"/>
+    <circle r="30" fill="none" stroke="#10b981" stroke-width="1" opacity="0.65"/>
+    <!-- Sweep glow gradient -->
+    <path d="M 0 0 L 56.5 56.5 A 80 80 0 0 0 80 0 Z" fill="url(#sweepGrad)" opacity="0.4">
+      <animateTransform 
+        attributeName="transform" 
+        type="rotate" 
+        from="0" 
+        to="360" 
+        dur="5s" 
+        repeatCount="indefinite"
+      />
+    </path>
+    <!-- Radar Sweep Line -->
+    <line x1="0" y1="0" x2="80" y2="0" stroke="#10b981" stroke-width="2" opacity="0.9">
+      <animateTransform 
+        attributeName="transform" 
+        type="rotate" 
+        from="0" 
+        to="360" 
+        dur="5s" 
+        repeatCount="indefinite"
+      />
+    </line>
+  </g>
+
+  <!-- Pulsing Forensic Scan Target -->
+  <g transform="translate(680, 125)">
+    <circle r="40" fill="none" stroke="#ef4444" stroke-width="1.25" stroke-dasharray="6 3">
+      <animate attributeName="r" values="30;55;30" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.85;0.2;0.85" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <rect x="-12" y="-12" width="24" height="24" fill="none" stroke="#ef4444" stroke-width="1.5">
+      <animateTransform attributeName="transform" type="rotate" from="0" to="90" dur="6s" repeatCount="indefinite"/>
+    </rect>
+    <circle r="4.5" fill="#ef4444"/>
+  </g>
+
+  <!-- Core Branding Text -->
+  <g transform="translate(250, 110)">
+    <text x="0" y="0" font-family="monospace" font-size="34" font-weight="900" fill="#10b981" letter-spacing="4">
+      OMNIDETECT AI
+      <animate attributeName="opacity" values="1;0.75;1" dur="3.5s" repeatCount="indefinite"/>
+    </text>
+    <text x="0" y="26" font-family="sans-serif" font-size="13" fill="#a7f3d0" letter-spacing="2" opacity="0.85">
+      MEDIA FORENSICS &amp; AI TELEMETRY PLATFORM
+    </text>
+  </g>
+
+  <!-- Scanning Indicator Log Line (Dynamic console text) -->
+  <g transform="translate(250, 175)" fill="#34d399" font-family="monospace" font-size="12">
+    <!-- Blinking Cursor -->
+    <text x="0" y="0">> INITIALIZING SCANNER SYSTEM MODULE... OK</text>
+    <text x="0" y="18">> DEEP EXIF METADATA EXTRACTION PIPELINE... ACTIVE</text>
+    <text x="0" y="36">> SYSTEM DIAGNOSTIC INTERACTION LEVEL... SECURE</text>
+  </g>
+
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="sweepGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0.8"/>
+    </linearGradient>
+  </defs>
+</svg>

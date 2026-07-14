@@ -1,10 +1,27 @@
+<p align="center">
+  <img src="screenshots/animated_banner.svg" width="100%" alt="OmniDetect AI Animated Banner" />
+</p>
+
 # 🕵️‍♂️ OmniDetect AI: Full-Stack Media Metadata Forensics & AI Detection Platform
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D%2018.0.0-339933?style=flat&logo=node.js)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org/)
+<p align="center">
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsudonishant%2Fomnidetect-ai&root-directory=frontend&env=VITE_BACKEND_URL" target="_blank">
+    <img src="https://vercel.com/button" alt="Deploy with Vercel"/>
+  </a>
+  <a href="https://render.com/deploy?repo=https://github.com/sudonishant/omnidetect-ai" target="_blank">
+    <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render"/>
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT" target="_blank">
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"/>
+  </a>
+  <img src="https://img.shields.io/badge/Node.js-%3E%3D%2018.0.0-339933?style=flat&logo=node.js" alt="Node.js"/>
+  <img src="https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB" alt="React"/>
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white" alt="Vite"/>
+  <img src="https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white" alt="SQLite"/>
+</p>
 
 🔗 **Live Web Workspace: [omnidetect.vercel.app](https://omnidetect.vercel.app/)**
 
@@ -113,8 +130,30 @@ omnidetect-ai/
         └── components/    # Telemetry dials and property tables
 ```
 
+## 🤝 Contributing
+
+Contributions make the open-source community an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## ⭐ Star History
+
+We appreciate your support! If you find this platform helpful, please consider leaving a star to help others discover it.
+
+<p align="center">
+  <a href="https://star-history.com/#sudonishant/omnidetect-ai&amp;Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=sudonishant/omnidetect-ai&amp;type=Date" width="100%" alt="Star History Chart" />
+  </a>
+</p>
+
 ---
 
 ## 📄 License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for details. Created by [sudonishant](https://github.com/sudonishant).
+Distributed under the MIT License. See `LICENSE` for details. Created with 💻 by [sudonishant](https://github.com/sudonishant).
