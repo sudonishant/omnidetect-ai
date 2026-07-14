@@ -20,7 +20,6 @@ backend/.env
 frontend/.env
 *.key
 *.pem
-backend/scripts/save_actual_keys.js
 backend/config/secure_store.json
 
 # IDEs & System files
