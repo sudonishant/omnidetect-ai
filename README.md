@@ -19,6 +19,25 @@ graph TD
 
 ---
 
+## 🖥️ Platform Previews
+
+<p align="center">
+  <img src="screenshots/dashboard_view.png" width="90%" alt="Forensics Dashboard Main View" />
+  <br />
+  <em>Figure 1: Main Forensics Dashboard workspace containing the drag-n-drop file upload interface.</em>
+</p>
+
+<br />
+
+<p align="center">
+  <img src="screenshots/image_detector.png" width="48%" alt="AI Detection & Image Analysis" />
+  <img src="screenshots/metadata_analysis.png" width="48%" alt="Deep Metadata Analysis" />
+  <br />
+  <em>Figure 2: AI Detection probability charts (left) and deep file metadata properties inspector (right).</em>
+</p>
+
+---
+
 ## 🚀 Key Features
 
 *   **Multi-Modal Media Forensics**:
