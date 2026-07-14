@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BACKEND_URL } from '../config';
 
 /**
  * Settings configuration dashboard.
@@ -17,7 +18,7 @@ export default function Settings({ settings, setSettings }) {
 
   const fetchKeyStatus = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/settings/key/status');
+      const response = await fetch(`${BACKEND_URL}/api/settings/key/status`);
       if (response.ok) {
         const data = await response.json();
         setHasKeysSaved(data.hasKey);
@@ -44,7 +45,7 @@ export default function Settings({ settings, setSettings }) {
     setStatusMsg(null);
 
     try {
-      const response = await fetch('http://localhost:5000/api/settings/key', {
+      const response = await fetch(`${BACKEND_URL}/api/settings/key`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -70,7 +71,7 @@ export default function Settings({ settings, setSettings }) {
   const clearKeys = async () => {
     setIsSaving(true);
     try {
-      await fetch('http://localhost:5000/api/settings/key', {
+      await fetch(`${BACKEND_URL}/api/settings/key`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ openRouterKey: '' })

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { BACKEND_URL } from './config';
 import FileDropzone from './components/UI/FileDropzone';
 import Gauge from './components/UI/Gauge';
 import ProgressTracker from './components/UI/ProgressTracker';
@@ -25,7 +26,7 @@ export default function App() {
 
   // Socket.IO connection
   useEffect(() => {
-    const socket = io('http://localhost:5000');
+    const socket = io(BACKEND_URL);
     socketRef.current = socket;
     socket.on('scan:progress', (data) => setScanProgress(data));
     return () => socket.disconnect();
@@ -49,14 +50,14 @@ export default function App() {
     let category = '';
 
     if (mime.startsWith('image/')) {
-      apiEndpoint = 'http://localhost:5000/api/detect/image';
+      apiEndpoint = `${BACKEND_URL}/api/detect/image`;
       category = 'image';
     } else if (mime.startsWith('audio/') || file.name.endsWith('.mp3') || file.name.endsWith('.wav')) {
-      apiEndpoint = 'http://localhost:5000/api/detect/audio';
+      apiEndpoint = `${BACKEND_URL}/api/detect/audio`;
       category = 'audio';
     } else {
       // Text/document files use the new unified scan endpoint
-      apiEndpoint = 'http://localhost:5000/api/scan';
+      apiEndpoint = `${BACKEND_URL}/api/scan`;
       category = 'scan';
     }
 
@@ -111,7 +112,7 @@ export default function App() {
     if (socketRef.current) formData.append('socketId', socketRef.current.id);
 
     try {
-      const response = await fetch('http://localhost:5000/api/scan', {
+      const response = await fetch(`${BACKEND_URL}/api/scan`, {
         method: 'POST',
         body: formData
       });

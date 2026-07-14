@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BACKEND_URL } from '../config';
 import Gauge from './UI/Gauge';
 import FilterPanel from './UI/FilterPanel';
 
@@ -130,14 +131,14 @@ export default function ScanResultsPage({ scanResult, onReset }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
           <button
             className="btn btn-primary"
-            onClick={() => window.open(`http://localhost:5000/api/scan/${scanId}/download/report`, '_blank')}
+            onClick={() => window.open(`${BACKEND_URL}/api/scan/${scanId}/download/report`, '_blank')}
             style={{ fontSize: '0.8rem', padding: '8px 16px' }}
           >
             ⬇ Download Report
           </button>
           <button
             className="btn btn-secondary"
-            onClick={() => window.open(`http://localhost:5000/api/scan/${scanId}/download/highlighted`, '_blank')}
+            onClick={() => window.open(`${BACKEND_URL}/api/scan/${scanId}/download/highlighted`, '_blank')}
             style={{ fontSize: '0.8rem', padding: '8px 16px' }}
           >
             ⬇ Highlighted PDF

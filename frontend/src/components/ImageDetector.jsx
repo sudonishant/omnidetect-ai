@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BACKEND_URL } from '../config';
 import FileDropzone from './UI/FileDropzone';
 import Gauge from './UI/Gauge';
 
@@ -29,7 +30,7 @@ export default function ImageDetector({ settings, onScanLogged }) {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:5000/api/detect/image', {
+      const response = await fetch(`${BACKEND_URL}/api/detect/image`, {
         method: 'POST',
         body: formData
       });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BACKEND_URL } from '../config';
 import FileDropzone from './UI/FileDropzone';
 import Gauge from './UI/Gauge';
 import RadarChart from './UI/RadarChart';
@@ -30,7 +31,7 @@ export default function TextDetector({ gptZeroKey, settings, onScanLogged }) {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/detect/text', {
+      const response = await fetch(`${BACKEND_URL}/api/detect/text`, {
         method: 'POST',
         headers: {
           'x-gptzero-key': gptZeroKey || ''
@@ -67,7 +68,7 @@ export default function TextDetector({ gptZeroKey, settings, onScanLogged }) {
     setResult(null);
 
     try {
-      const response = await fetch('http://localhost:5000/api/detect/text', {
+      const response = await fetch(`${BACKEND_URL}/api/detect/text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

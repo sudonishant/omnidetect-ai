@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BACKEND_URL } from '../config';
 import FileDropzone from './UI/FileDropzone';
 
 /**
@@ -25,7 +26,7 @@ export default function MetadataScanner({ onScanLogged }) {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:5000/api/detect/metadata', {
+      const response = await fetch(`${BACKEND_URL}/api/detect/metadata`, {
         method: 'POST',
         body: formData
       });
