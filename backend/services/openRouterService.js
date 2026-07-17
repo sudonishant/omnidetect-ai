@@ -47,6 +47,8 @@ Respond only with the 3-sentence summary in a professional, objective tone. Do n
     const apiKey = apiKeys[i];
     try {
       console.log(`[OpenRouter Auditor] Sending image audit request with Key Index ${i}... (ProMode: ${proMode})`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
       const response = await globalThis.fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -60,8 +62,10 @@ Respond only with the 3-sentence summary in a professional, objective tone. Do n
           messages: [
             { role: 'user', content: prompt }
           ]
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeout);
 
       if (response.status === 429 || response.status === 401 || response.status === 403) {
         console.warn(`[OpenRouter Rotation] Key Index ${i} returned status ${response.status}. Rotating to backup...`);
@@ -123,6 +127,8 @@ Respond only with the 3-sentence summary in a professional, objective tone. Do n
     const apiKey = apiKeys[i];
     try {
       console.log(`[OpenRouter Auditor] Sending text audit request with Key Index ${i}... (ProMode: ${proMode})`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
       const response = await globalThis.fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -136,8 +142,10 @@ Respond only with the 3-sentence summary in a professional, objective tone. Do n
           messages: [
             { role: 'user', content: prompt }
           ]
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeout);
 
       if (response.status === 429 || response.status === 401 || response.status === 403) {
         console.warn(`[OpenRouter Rotation] Key Index ${i} returned status ${response.status}. Rotating to backup...`);
@@ -202,6 +210,8 @@ Respond only with the 3-sentence summary in a professional, objective tone. Do n
     const apiKey = apiKeys[i];
     try {
       console.log(`[OpenRouter Auditor] Sending audio audit request with Key Index ${i}... (ProMode: ${proMode})`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
       const response = await globalThis.fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -215,8 +225,10 @@ Respond only with the 3-sentence summary in a professional, objective tone. Do n
           messages: [
             { role: 'user', content: prompt }
           ]
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeout);
 
       if (response.status === 429 || response.status === 401 || response.status === 403) {
         console.warn(`[OpenRouter Rotation] Key Index ${i} returned status ${response.status}. Rotating to backup...`);
@@ -238,3 +250,117 @@ Respond only with the 3-sentence summary in a professional, objective tone. Do n
 
   return 'Audio AI Audit skipped: All available API keys were rate limited or failed to connect.';
 }
+
+/**
+ * AI Humanizer / Bypass Heuristics and API interface.
+ * Rewrites text to sound more natural, varied, and pass AI detectors.
+ * @param {string} text - The input AI text
+ * @param {boolean} [proMode=false] - Use advanced model
+ * @returns {Promise<{text: string, method: string}>}
+ */
+export async function humanizeTextWithAI(text, proMode = false) {
+  const apiKeys = getKeys();
+  
+  // ── Local Fallback Heuristics (if no keys available) ──
+  const runLocalHumanize = (txt) => {
+    let clean = txt;
+    const replacements = {
+      '\\b[Ff]urthermore\\b': 'Also',
+      '\\b[Mm]oreover\\b': 'In addition',
+      '\\b[Ii]n conclusion\\b': 'To wrap it up',
+      '\\b[Cc]onsequently\\b': 'So',
+      '\\b[Tt]estament to\\b': 'clear sign of',
+      '\\b[Pp]ivotal\\b': 'key',
+      '\\b[Rr]evolutionary\\b': 'cool',
+      '\\b[Uu]tilize\\b': 'use',
+      '\\b[Nn]otably\\b': 'Indeed',
+      '\\b[Ss]ignificantly\\b': 'Largely',
+      '\\b[Dd]iverse\\b': 'various',
+      '\\b[Uu]nprecedented\\b': 'new and major',
+      '\\b[Ff]oster\\b': 'help build',
+      '\\b[Ee]xhibit\\b': 'show',
+      '\\b[Dd]elineate\\b': 'show outline of',
+      '\\b[Ii]nvaluable\\b': 'very helpful'
+    };
+    
+    for (const [key, value] of Object.entries(replacements)) {
+      clean = clean.replace(new RegExp(key, 'g'), value);
+    }
+    return {
+      text: clean,
+      method: 'Local Heuristic Synonym Replacer (Add OpenRouter key in settings for advanced LLM Humanizer)'
+    };
+  };
+
+  if (apiKeys.length === 0) {
+    return runLocalHumanize(text);
+  }
+
+  // Use openrouter/free by default for fast & smart humanization
+  const modelToUse = proMode ? 'google/gemini-2.5-pro-exp:free' : 'openrouter/free';
+  
+  const systemPrompt = `You are a world-class professional editor and copywriter.
+Your task is to rewrite the provided text so that it reads 100% naturally, like it was written by an expressive human.
+Use these rules strictly:
+1. Vary sentence length (mix short, punchy sentences with compound ones).
+2. Avoid typical AI patterns (do not use words like "testament", "furthermore", "moreover", "delve", "tapestry", "beacon").
+3. Write in an active, engaging voice.
+4. Ensure the rewritten text passes AI detection tools (e.g. RoBERTa, GPTZero) with a 0% AI index score.
+5. Maintain the EXACT original facts, meaning, and core argument.
+6. Do NOT add any introductory explanation, conversational filler, or markdown commentary. Return ONLY the rewritten text itself.`;
+
+  for (let i = 0; i < apiKeys.length; i++) {
+    const apiKey = apiKeys[i];
+    try {
+      console.log(`[OpenRouter Humanizer] Sending humanize request with Key Index ${i}... (ProMode: ${proMode})`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      
+      const response = await globalThis.fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'http://localhost:5173',
+          'X-Title': 'OmniDetect AI'
+        },
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: text }
+          ],
+          temperature: 0.85 // High temperature to increase perplexity and reduce predictability
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+
+      if (response.status === 429 || response.status === 401 || response.status === 403) {
+        console.warn(`[OpenRouter Humanizer] Key Index ${i} returned status ${response.status}. Rotating...`);
+        continue;
+      }
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.warn(`[OpenRouter Humanizer] Key Index ${i} failed: ${errText}. Rotating...`);
+        continue;
+      }
+
+      const data = await response.json();
+      const rewritten = data.choices?.[0]?.message?.content?.trim();
+      if (rewritten) {
+        return {
+          text: rewritten,
+          method: `OpenRouter AI Humanizer (Model: ${modelToUse})`
+        };
+      }
+    } catch (err) {
+      console.warn(`[OpenRouter Humanizer] Key Index ${i} failed: ${err.message}. Rotating...`);
+    }
+  }
+
+  // Fallback to local if all API keys fail
+  return runLocalHumanize(text);
+}
+

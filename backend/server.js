@@ -14,7 +14,7 @@ import { analyzeTextLocally, analyzeWithGptZero } from './services/textDetector.
 import { analyzeImage } from './services/imageDetector.js';
 import { analyzeAudio } from './services/audioDetector.js';
 import { saveKey, getKey } from './services/keyManager.js';
-import { auditImageWithAI, auditTextWithAI, auditAudioWithAI } from './services/openRouterService.js';
+import { auditImageWithAI, auditTextWithAI, auditAudioWithAI, humanizeTextWithAI } from './services/openRouterService.js';
 import { processTextIntoBlocks } from './services/textPipeline.js';
 import { classifyBlocks, calculateSimilarityIndex } from './services/aiInferenceEngine.js';
 import { createHighlightedPdf } from './services/pdfAnnotator.js';
@@ -296,6 +296,7 @@ app.post('/api/scan', upload.single('file'), async (req, res) => {
   const socketId = req.body.socketId || req.headers['x-socket-id'];
   const socket = socketId ? io.sockets.sockets.get(socketId) : null;
   const proMode = req.body.proMode === 'true' || req.body.proMode === true;
+  const fastCheck = req.body.fastCheck === 'true' || req.body.fastCheck === true;
 
   const emitProgress = (data) => {
     if (socket) socket.emit('scan:progress', data);
@@ -352,12 +353,11 @@ app.post('/api/scan', upload.single('file'), async (req, res) => {
       excludeShort
     });
 
-    emitProgress({ stage: 'inference', percent: 25, message: `Running AI inference on ${pipelineResult.totalBlocks - pipelineResult.excludedBlocks} blocks...` });
-
-    // ── Step 4: AI Inference (Hugging Face) ──
+    // ── Step 4: AI Inference (Hugging Face / OpenRouter / Fast Check) ──
     const scoredBlocks = await classifyBlocks(
       pipelineResult.blocks,
       proMode,
+      fastCheck,
       (progress) => {
         const pct = 25 + Math.round((progress.current / progress.total) * 55);
         emitProgress({ stage: 'inference', percent: pct, message: `Analyzing block ${progress.current}/${progress.total}...` });
@@ -373,14 +373,16 @@ app.post('/api/scan', upload.single('file'), async (req, res) => {
 
     emitProgress({ stage: 'audit', percent: 85, message: 'Running AI Deep Audit...' });
 
-    // ── Step 6: OpenRouter AI Audit (optional) ──
+    // ── Step 6: OpenRouter AI Audit (optional, bypassed on fast check) ──
     let aiAuditExplanation = null;
-    const openRouterKey = getKey();
-    if (openRouterKey) {
-      try {
-        aiAuditExplanation = await auditTextWithAI(rawText, { ...localMetrics, aiProbability: aiSimilarityIndex }, proMode);
-      } catch (err) {
-        console.warn('[Scan] OpenRouter audit failed:', err.message);
+    if (!fastCheck) {
+      const openRouterKey = getKey();
+      if (openRouterKey) {
+        try {
+          aiAuditExplanation = await auditTextWithAI(rawText, { ...localMetrics, aiProbability: aiSimilarityIndex }, proMode);
+        } catch (err) {
+          console.warn('[Scan] OpenRouter audit failed:', err.message);
+        }
       }
     }
 
@@ -411,6 +413,7 @@ app.post('/api/scan', upload.single('file'), async (req, res) => {
       },
       aiAuditExplanation,
       proMode,
+      fastCheck,
       cached: false,
       timestamp
     };
@@ -462,13 +465,29 @@ app.post('/api/scan', upload.single('file'), async (req, res) => {
     })();
 
     emitProgress({ stage: 'complete', percent: 100, message: 'Scan complete!' });
-
     res.json(scanResult);
-
   } catch (error) {
     console.error('[Scan] Error:', error);
     emitProgress({ stage: 'error', percent: 0, message: error.message });
     res.status(500).json({ error: error.message || 'Scan processing failed' });
+  }
+});
+
+/**
+ * Endpoint to Humanize/Bypass AI-generated text.
+ */
+app.post('/api/humanize', async (req, res) => {
+  const { text, proMode } = req.body;
+  if (!text || text.trim().length === 0) {
+    return res.status(400).json({ error: 'Text content is empty' });
+  }
+
+  try {
+    const result = await humanizeTextWithAI(text, proMode === 'true' || proMode === true);
+    res.json(result);
+  } catch (err) {
+    console.error('[Humanizer] Error:', err);
+    res.status(500).json({ error: err.message || 'Humanization failed' });
   }
 });
 

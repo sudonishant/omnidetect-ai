@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { BACKEND_URL } from '../config';
 import Gauge from './UI/Gauge';
 import FilterPanel from './UI/FilterPanel';
+import { humanizeTextWithAI } from '../services/openRouterService';
+import { generateReport } from '../services/reportGenerator';
+import { createHighlightedPdf } from '../services/pdfAnnotator';
 
 /**
  * Render markdown-like text with headers and bold.
@@ -40,7 +42,7 @@ function getProbColor(prob) {
   return 'var(--color-human)';
 }
 
-export default function ScanResultsPage({ scanResult, onReset }) {
+export default function ScanResultsPage({ scanResult, onReset, originalFile }) {
   const [filters, setFilters] = useState({
     excludeQuotes: true,
     excludeReferences: true,
@@ -48,24 +50,117 @@ export default function ScanResultsPage({ scanResult, onReset }) {
     sensitivityThreshold: 50
   });
 
-  if (!scanResult) return null;
+  const [humanizingIndex, setHumanizingIndex] = useState(null);
+  const [humanizedResults, setHumanizedResults] = useState({});
+  const [comparisonBlock, setComparisonBlock] = useState(null);
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const {
-    scanId, fileName, aiSimilarityIndex, verdict,
-    blocks = [], totalBlocks, flaggedBlocks, excludedBlocks,
-    totalWords, aiAuditExplanation, cached, proMode
+    scanId,
+    fileName,
+    aiSimilarityIndex,
+    totalBlocks,
+    flaggedBlocks,
+    excludedBlocks,
+    totalWords,
+    verdict,
+    cached,
+    proMode,
+    blocks = [],
+    aiAuditExplanation
   } = scanResult;
 
-  // Apply client-side filters to blocks for display
-  const visibleBlocks = blocks.filter(block => {
-    if (filters.excludeQuotes && block.excludeReason === 'quote') return false;
-    if (filters.excludeReferences && block.excludeReason === 'references') return false;
-    if (filters.excludeShort && block.excludeReason === 'too_short') return false;
-    return true;
+  const handleHumanize = async (block) => {
+    setHumanizingIndex(block.blockIndex);
+    try {
+      const data = await humanizeTextWithAI(block.text, proMode);
+      setHumanizedResults(prev => ({
+        ...prev,
+        [block.blockIndex]: data
+      }));
+      setComparisonBlock(block);
+    } catch (err) {
+      alert(`Humanization failed: ${err.message}`);
+    } finally {
+      setHumanizingIndex(null);
+    }
+  };
+
+  const downloadReportLocal = async () => {
+    setIsDownloadingReport(true);
+    try {
+      const pdfBytes = await generateReport(scanResult);
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fileName.replace(/\.[^/.]+$/, "")}_forensic_report.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Failed to generate PDF report: ${err.message}`);
+    } finally {
+      setIsDownloadingReport(false);
+    }
+  };
+
+  const downloadHighlightedPdfLocal = async () => {
+    if (!originalFile || originalFile.type !== 'application/pdf') {
+      alert('Highlighted PDF feature is only supported when scanning an original PDF document.');
+      return;
+    }
+
+    setIsDownloadingPdf(true);
+    try {
+      const arrayBuffer = await originalFile.arrayBuffer();
+      const highlightedBytes = await createHighlightedPdf(arrayBuffer, blocks, {
+        threshold: filters.sensitivityThreshold
+      });
+      const blob = new Blob([highlightedBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fileName.replace(/\.[^/.]+$/, "")}_highlighted.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Failed to annotate PDF: ${err.message}`);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  // Filter text blocks
+  const visibleBlocks = blocks.map(block => {
+    let exclude = block.exclude;
+    let excludeReason = block.excludeReason;
+
+    if (!filters.excludeQuotes && excludeReason === 'quote') {
+      exclude = false;
+      excludeReason = null;
+    }
+    if (!filters.excludeReferences && excludeReason === 'references') {
+      exclude = false;
+      excludeReason = null;
+    }
+    if (!filters.excludeShort && excludeReason === 'too_short') {
+      exclude = false;
+      excludeReason = null;
+    }
+
+    return {
+      ...block,
+      exclude,
+      excludeReason
+    };
   });
 
+  // Flagged sentences (above threshold, not excluded)
   const flaggedVisible = visibleBlocks.filter(b =>
-    !b.exclude && b.aiProbability !== null && b.aiProbability >= filters.sensitivityThreshold
+    !b.exclude &&
+    b.aiProbability !== null &&
+    b.aiProbability >= filters.sensitivityThreshold
   );
 
   return (
@@ -131,17 +226,19 @@ export default function ScanResultsPage({ scanResult, onReset }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
           <button
             className="btn btn-primary"
-            onClick={() => window.open(`${BACKEND_URL}/api/scan/${scanId}/download/report`, '_blank')}
+            onClick={downloadReportLocal}
+            disabled={isDownloadingReport}
             style={{ fontSize: '0.8rem', padding: '8px 16px' }}
           >
-            ⬇ Download Report
+            {isDownloadingReport ? 'Generating...' : '⬇ Download Report'}
           </button>
           <button
             className="btn btn-secondary"
-            onClick={() => window.open(`${BACKEND_URL}/api/scan/${scanId}/download/highlighted`, '_blank')}
-            style={{ fontSize: '0.8rem', padding: '8px 16px' }}
+            onClick={downloadHighlightedPdfLocal}
+            disabled={isDownloadingPdf || !originalFile || originalFile.type !== 'application/pdf'}
+            style={{ fontSize: '0.8rem', padding: '8px 16px', opacity: (originalFile && originalFile.type === 'application/pdf') ? 1 : 0.4 }}
           >
-            ⬇ Highlighted PDF
+            {isDownloadingPdf ? 'Annotating...' : '⬇ Highlighted PDF'}
           </button>
           <button
             className="btn btn-secondary"
@@ -230,9 +327,49 @@ export default function ScanResultsPage({ scanResult, onReset }) {
                       </span>
                     )}
                     {block.model && (
-                      <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
                         via {block.model}
                       </span>
+                    )}
+                    
+                    {/* AI Hatoo / Humanizer button */}
+                    {isFlagged && !block.exclude && (
+                      <button
+                        onClick={() => {
+                          if (humanizedResults[block.blockIndex]) {
+                            setComparisonBlock(block);
+                          } else {
+                            handleHumanize(block);
+                          }
+                        }}
+                        disabled={humanizingIndex !== null}
+                        style={{
+                          background: 'rgba(0, 200, 255, 0.1)',
+                          border: '1px solid rgba(0, 200, 255, 0.3)',
+                          borderRadius: '4px',
+                          color: 'var(--accent-cyan)',
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          cursor: 'pointer',
+                          marginLeft: 'auto',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}
+                      >
+                        {humanizingIndex === block.blockIndex ? (
+                          <>
+                            <span style={{ display: 'inline-block', width: '8px', height: '8px', border: '1px solid var(--accent-cyan)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'shiver-effect 1s infinite linear' }} />
+                            Removing AI...
+                          </>
+                        ) : humanizedResults[block.blockIndex] ? (
+                          '✨ View Humanized'
+                        ) : (
+                          '✨ AI Hatoo'
+                        )}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -273,15 +410,29 @@ export default function ScanResultsPage({ scanResult, onReset }) {
                       Block #{block.blockIndex + 1}
                     </span>
                     <span style={{
-                      fontSize: '0.85rem', fontWeight: 800,
-                      color: getProbColor(block.aiProbability)
+                      fontSize: '0.7rem', fontWeight: 700, color: getProbColor(block.aiProbability)
                     }}>
-                      {block.aiProbability?.toFixed(1)}%
+                      AI: {block.aiProbability.toFixed(1)}%
                     </span>
                   </div>
-                  <p style={{ fontSize: '0.8rem', lineHeight: '1.5', color: '#e4e4e7', margin: 0 }}>
-                    {block.text.substring(0, 150)}{block.text.length > 150 ? '...' : ''}
+                  <p style={{ fontSize: '0.8rem', color: '#e4e4e7', margin: '0 0 10px 0', lineHeight: '1.5' }}>
+                    {block.text.length > 150 ? block.text.substring(0, 150) + '...' : block.text}
                   </p>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => {
+                        if (humanizedResults[block.blockIndex]) {
+                          setComparisonBlock(block);
+                        } else {
+                          handleHumanize(block);
+                        }
+                      }}
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.65rem', padding: '4px 10px', width: '100%' }}
+                    >
+                      {humanizedResults[block.blockIndex] ? '✨ View Humanized Comparison' : '✨ Humanize with AI'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -289,31 +440,117 @@ export default function ScanResultsPage({ scanResult, onReset }) {
         </div>
       </div>
 
-      {/* ════════ AI AUDIT SECTION ════════ */}
+      {/* ════════ BOTTOM PANEL: AI Forensic Explainer ════════ */}
       {aiAuditExplanation && (
-        <div className="glass-panel" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" strokeWidth="2.5">
-              <polygon points="12 2 2 7 12 12 22 7 12 2" />
-              <polyline points="2 17 12 22 22 17" />
-              <polyline points="2 12 12 17 22 12" />
-            </svg>
-            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-              {proMode ? 'Pro Deep Audit Report' : 'AI Deep Audit Summary'}
-            </span>
+        <div className="glass-panel" style={{ padding: '24px 30px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1.2rem' }}>🔍</span>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: 0 }}>Linguistic Forensic Audit</h3>
           </div>
-          <div style={{
-            background: 'rgba(10, 132, 255, 0.03)',
-            border: '1px solid rgba(10, 132, 255, 0.18)',
-            borderRadius: '12px',
-            padding: '16px',
-            maxHeight: '400px',
-            overflowY: 'auto'
-          }}>
+          <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '12px' }}>
             {renderMarkdown(aiAuditExplanation)}
           </div>
         </div>
       )}
+
+      {/* Comparison Modal for Original vs Humanized */}
+      {comparisonBlock && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 1000, padding: '20px'
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%', maxWidth: '900px', maxHeight: '90vh',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px 24px', borderBottom: '1px solid var(--border-glass)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>AI Bypass & Humanizer (Block #{comparisonBlock.blockIndex + 1})</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  Rewritten to bypass classifiers and match natural human speech patterns.
+                </p>
+              </div>
+              <button
+                onClick={() => setComparisonBlock(null)}
+                style={{
+                  background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem',
+                  cursor: 'pointer', opacity: 0.7, hover: { opacity: 1 }
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Comparison panels */}
+            <div style={{
+              flex: 1, overflowY: 'auto', padding: '24px',
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px'
+            }}>
+              {/* Original */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-ai)', textTransform: 'uppercase' }}>Original Block (AI: {comparisonBlock.aiProbability?.toFixed(1)}%)</span>
+                <div style={{
+                  flex: 1, padding: '16px', background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,69,58,0.15)', borderRadius: '8px',
+                  fontSize: '0.85rem', lineHeight: '1.6', color: '#e4e4e7', whiteSpace: 'pre-wrap'
+                }}>
+                  {comparisonBlock.text}
+                </div>
+              </div>
+
+              {/* Humanized */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-human)', textTransform: 'uppercase' }}>Humanized / Bypassed Text (AI: 0%)</span>
+                <div style={{
+                  flex: 1, padding: '16px', background: 'rgba(48,209,88,0.03)',
+                  border: '1px solid rgba(48,209,88,0.2)', borderRadius: '8px',
+                  fontSize: '0.85rem', lineHeight: '1.6', color: '#fff', whiteSpace: 'pre-wrap',
+                  position: 'relative'
+                }}>
+                  {humanizedResults[comparisonBlock.blockIndex]?.text}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer with copy button */}
+            <div style={{
+              padding: '16px 24px', borderTop: '1px solid var(--border-glass)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: 'rgba(0,0,0,0.2)'
+            }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                Method: {humanizedResults[comparisonBlock.blockIndex]?.method}
+              </span>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setComparisonBlock(null)}
+                  style={{ fontSize: '0.75rem', padding: '6px 14px' }}
+                >
+                  Close
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    navigator.clipboard.writeText(humanizedResults[comparisonBlock.blockIndex]?.text || '');
+                    alert('Copied humanized text to clipboard!');
+                  }}
+                  style={{ fontSize: '0.75rem', padding: '6px 14px' }}
+                >
+                  📋 Copy Humanized Text
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

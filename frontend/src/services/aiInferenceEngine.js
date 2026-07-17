@@ -1,9 +1,8 @@
 /**
- * AI Inference Engine — ML-powered text classification.
- * Primary: Hugging Face Inference API (free, no key).
- * Fallback: OpenRouter API (already configured with encrypted keys).
- * Ultra-fast fallback: Local heuristic engine.
+ * aiInferenceEngine.js — Client-side AI Inference Engine.
+ * Runs classification directly in the browser using Hugging Face and OpenRouter APIs.
  */
+
 import { analyzeTextLocally } from './textDetector.js';
 import { getKeys } from './keyManager.js';
 
@@ -14,13 +13,8 @@ const MODELS = {
   pro: 'openai-community/roberta-large-openai-detector'
 };
 
-// Track HF API availability — skip all blocks if first call fails
-let hfAvailable = null; // null = unknown, true/false = tested
+let hfAvailable = null;
 
-/**
- * Quick connectivity test for Hugging Face API (3s timeout).
- * @returns {Promise<boolean>}
- */
 async function testHfConnectivity() {
   if (hfAvailable !== null) return hfAvailable;
   try {
@@ -38,7 +32,7 @@ async function testHfConnectivity() {
     return hfAvailable;
   } catch (err) {
     hfAvailable = false;
-    console.warn(`[AI Inference] HF API unreachable: ${err.message}. Using local fallback.`);
+    console.warn(`[AI Inference] HF API unreachable: ${err.message}. Using OpenRouter/Local fallback.`);
     return false;
   }
 }
@@ -46,16 +40,9 @@ async function testHfConnectivity() {
 // Reset HF availability check every 10 minutes
 setInterval(() => { hfAvailable = null; }, 10 * 60 * 1000);
 
-/**
- * Classify a single text block via Hugging Face API.
- * @param {string} text
- * @param {boolean} [proMode=false]
- * @returns {Promise<{aiProbability: number|null, source: string, model: string}>}
- */
 export async function classifySingleBlock(text, proMode = false) {
   const modelName = proMode ? MODELS.pro : MODELS.standard;
   const url = `${HF_API_BASE}/${modelName}`;
-
   const truncatedText = text.split(/\s+/).slice(0, 500).join(' ');
 
   try {
@@ -72,53 +59,36 @@ export async function classifySingleBlock(text, proMode = false) {
     clearTimeout(timeout);
 
     if (response.status === 503) {
-      // Model loading — don't wait, just return null
-      console.log(`[AI Inference] Model loading, skipping block...`);
+      console.warn(`[AI Inference] HF model is loading (503).`);
       return { aiProbability: null, source: 'hf_loading', model: modelName.split('/').pop() };
     }
 
     if (!response.ok) {
-      return { aiProbability: null, source: 'hf_error', model: modelName.split('/').pop() };
+      throw new Error(`HF returned status ${response.status}`);
     }
 
-    const data = await response.json();
-    const predictions = Array.isArray(data[0]) ? data[0] : data;
-
-    let aiProb = null;
-
-    if (proMode) {
-      const fakeEntry = predictions.find(p => p.label === 'LABEL_0' || p.label?.toLowerCase() === 'fake');
-      const realEntry = predictions.find(p => p.label === 'LABEL_1' || p.label?.toLowerCase() === 'real');
-      if (fakeEntry) aiProb = Math.round(fakeEntry.score * 10000) / 100;
-      else if (realEntry) aiProb = Math.round((1 - realEntry.score) * 10000) / 100;
-    } else {
-      const aiEntry = predictions.find(p => p.label === 'LABEL_1' || p.label?.toLowerCase() === 'chatgpt');
-      const humanEntry = predictions.find(p => p.label === 'LABEL_0' || p.label?.toLowerCase() === 'human');
-      if (aiEntry) aiProb = Math.round(aiEntry.score * 10000) / 100;
-      else if (humanEntry) aiProb = Math.round((1 - humanEntry.score) * 10000) / 100;
+    const result = await response.json();
+    if (Array.isArray(result) && Array.isArray(result[0])) {
+      const predictions = result[0];
+      let aiProb = 0;
+      
+      if (modelName.includes('chatgpt-detector-roberta')) {
+        const chatgpt = predictions.find(p => p.label === 'LABEL_1');
+        aiProb = chatgpt ? chatgpt.score * 100 : 0;
+      } else {
+        const fake = predictions.find(p => p.label === 'Fake');
+        aiProb = fake ? fake.score * 100 : 0;
+      }
+      return { aiProbability: aiProb, source: 'huggingface_api', model: modelName.split('/').pop() };
     }
-
-    return {
-      aiProbability: aiProb,
-      source: 'huggingface',
-      model: modelName.split('/').pop()
-    };
-
+    
+    throw new Error('Invalid predictions structure from Hugging Face');
   } catch (err) {
-    if (err.name === 'AbortError') {
-      console.warn(`[AI Inference] HF request timed out`);
-    } else {
-      console.warn(`[AI Inference] HF error: ${err.message}`);
-    }
+    console.warn(`[AI Inference] HF error: ${err.message}`);
     return { aiProbability: null, source: 'hf_unavailable', model: modelName.split('/').pop() };
   }
 }
 
-/**
- * Use local heuristic engine to score a single block.
- * @param {string} text
- * @returns {{aiProbability: number, source: string, model: string}}
- */
 function classifyBlockLocally(text) {
   const result = analyzeTextLocally(text);
   return {
@@ -128,16 +98,8 @@ function classifyBlockLocally(text) {
   };
 }
 
-
-/**
- * Classify a single text block using OpenRouter LLM failover.
- * Prompts the model to return a structured JSON with probability.
- * @param {string} text
- * @param {boolean} [proMode=false]
- * @returns {Promise<{aiProbability: number|null, source: string, model: string}|null>}
- */
 async function classifyBlockWithOpenRouter(text, proMode = false) {
-  const apiKeys = getKeys();
+  const apiKeys = await getKeys();
   if (apiKeys.length === 0) return null;
 
   const modelToUse = proMode ? 'google/gemini-2.5-pro-exp:free' : 'openrouter/free';
@@ -195,19 +157,9 @@ Respond with ONLY a valid raw JSON object. Do not include markdown code block fo
   return null;
 }
 
-/**
- * Classify an array of text blocks with smart fallback and optional fast check.
- * Flow: If fastCheck, use local heuristics immediately. Else test HF → batch HF → fallback to OpenRouter → fallback to local.
- * @param {Array} blocks
- * @param {boolean} [proMode=false]
- * @param {boolean|Function} [fastCheck=false]
- * @param {Function|null} [onProgress=null]
- * @returns {Promise<Array>}
- */
 export async function classifyBlocks(blocks, proMode = false, fastCheck = false, onProgress = null) {
   const result = blocks.map(block => ({ ...block }));
 
-  // Gracefully handle if onProgress is passed as 3rd parameter
   let isFast = fastCheck;
   let progressCallback = onProgress;
   if (typeof fastCheck === 'function') {
@@ -215,7 +167,6 @@ export async function classifyBlocks(blocks, proMode = false, fastCheck = false,
     isFast = false;
   }
 
-  // Mark excluded blocks
   const processable = [];
   result.forEach((block, idx) => {
     if (!block.exclude) {
@@ -231,9 +182,8 @@ export async function classifyBlocks(blocks, proMode = false, fastCheck = false,
   console.log(`[AI Inference] Processing ${total} blocks (${blocks.length - total} excluded)...`);
   if (total === 0) return result;
 
-  // ── Fast Check (Instant Local Heuristic) ──
   if (isFast) {
-    console.log(`[AI Inference] Fast Check Mode: Bypassing remote API calls.`);
+    console.log(`[AI Inference] Fast Check Mode active.`);
     let processed = 0;
     for (const idx of processable) {
       const local = classifyBlockLocally(result[idx].text);
@@ -250,17 +200,14 @@ export async function classifyBlocks(blocks, proMode = false, fastCheck = false,
         });
       }
     }
-    console.log(`[AI Inference] Fast Check completed.`);
     return result;
   }
 
-  // Step 1: Quick HF connectivity test (3 seconds max)
-  if (onProgress) onProgress({ current: 0, total, stage: 'inference', percent: 0 });
+  if (progressCallback) progressCallback({ current: 0, total, stage: 'inference', percent: 0 });
   const canUseHf = await testHfConnectivity();
 
   if (canUseHf) {
-    // ═══ HF AVAILABLE: Batch process via Hugging Face ═══
-    console.log(`[AI Inference] Using Hugging Face API for ${total} blocks...`);
+    console.log(`[AI Inference] Processing via Hugging Face API...`);
     const BATCH_SIZE = 5;
     let processed = 0;
 
@@ -270,20 +217,17 @@ export async function classifyBlocks(blocks, proMode = false, fastCheck = false,
         batch.map(idx => classifySingleBlock(result[idx].text, proMode))
       );
 
-      // Resolve results
       for (let j = 0; j < batch.length; j++) {
         const idx = batch[j];
         const res = batchResults[j];
         
         if (res.aiProbability === null) {
-          // HF failed for this block -> Try OpenRouter failover first
           const orRes = await classifyBlockWithOpenRouter(result[idx].text, proMode);
           if (orRes) {
             result[idx].aiProbability = orRes.aiProbability;
             result[idx].source = orRes.source;
             result[idx].model = orRes.model;
           } else {
-            // Both HF and OpenRouter failed -> Local Heuristic
             const local = classifyBlockLocally(result[idx].text);
             result[idx].aiProbability = local.aiProbability;
             result[idx].source = local.source;
@@ -297,8 +241,8 @@ export async function classifyBlocks(blocks, proMode = false, fastCheck = false,
       }
 
       processed += batch.length;
-      if (onProgress) {
-        onProgress({ current: processed, total, stage: 'inference', percent: Math.round((processed / total) * 100) });
+      if (progressCallback) {
+        progressCallback({ current: processed, total, stage: 'inference', percent: Math.round((processed / total) * 100) });
       }
 
       if (i + BATCH_SIZE < processable.length) {
@@ -306,10 +250,9 @@ export async function classifyBlocks(blocks, proMode = false, fastCheck = false,
       }
     }
   } else {
-    // ═══ HF UNAVAILABLE: Try OpenRouter Failover (Direct AI Model) ═══
-    const orKeys = getKeys();
+    const orKeys = await getKeys();
     if (orKeys.length > 0) {
-      console.log(`[AI Inference] HF down — Using OpenRouter AI models for direct detection...`);
+      console.log(`[AI Inference] HF down — Using OpenRouter AI models...`);
       let processed = 0;
       for (const idx of processable) {
         const orRes = await classifyBlockWithOpenRouter(result[idx].text, proMode);
@@ -318,20 +261,18 @@ export async function classifyBlocks(blocks, proMode = false, fastCheck = false,
           result[idx].source = orRes.source;
           result[idx].model = orRes.model;
         } else {
-          // OpenRouter also failed -> Local Heuristic
           const local = classifyBlockLocally(result[idx].text);
           result[idx].aiProbability = local.aiProbability;
           result[idx].source = local.source;
           result[idx].model = local.model;
         }
         processed++;
-        if (onProgress) {
-          onProgress({ current: processed, total, stage: 'inference', percent: Math.round((processed / total) * 100) });
+        if (progressCallback) {
+          progressCallback({ current: processed, total, stage: 'inference', percent: Math.round((processed / total) * 100) });
         }
       }
     } else {
-      // No OR keys and HF is down -> Local Heuristic
-      console.log(`[AI Inference] HF & OpenRouter both unavailable — using local heuristic fallback...`);
+      console.log(`[AI Inference] HF & OpenRouter both unavailable — using local heuristics...`);
       let processed = 0;
       for (const idx of processable) {
         const local = classifyBlockLocally(result[idx].text);
@@ -339,34 +280,23 @@ export async function classifyBlocks(blocks, proMode = false, fastCheck = false,
         result[idx].source = local.source;
         result[idx].model = local.model;
         processed++;
-        if (onProgress && processed % 5 === 0) {
-          onProgress({ current: processed, total, stage: 'inference', percent: Math.round((processed / total) * 100) });
+        if (progressCallback && processed % 5 === 0) {
+          progressCallback({ current: processed, total, stage: 'inference', percent: Math.round((processed / total) * 100) });
         }
       }
-      if (onProgress) onProgress({ current: total, total, stage: 'inference', percent: 100 });
+      if (progressCallback) progressCallback({ current: total, total, stage: 'inference', percent: 100 });
     }
   }
 
-  console.log(`[AI Inference] Completed classification of ${total} blocks.`);
   return result;
 }
 
-/**
- * Calculate the overall AI Similarity Index (weighted average by word count).
- * @param {Array} scoredBlocks
- * @returns {number} 0-100
- */
 export function calculateSimilarityIndex(scoredBlocks) {
-  let weightedSum = 0;
-  let totalWeight = 0;
+  const activeBlocks = scoredBlocks.filter(b => !b.exclude && b.aiProbability !== null);
+  if (activeBlocks.length === 0) return 0;
 
-  for (const block of scoredBlocks) {
-    if (block.exclude || block.aiProbability === null || block.aiProbability === undefined) continue;
-    const weight = block.wordCount || 1;
-    weightedSum += block.aiProbability * weight;
-    totalWeight += weight;
-  }
+  const totalWords = activeBlocks.reduce((sum, b) => sum + (b.wordCount || 1), 0);
+  const weightedSum = activeBlocks.reduce((sum, b) => sum + (b.aiProbability * (b.wordCount || 1)), 0);
 
-  if (totalWeight === 0) return 0;
-  return Math.round((weightedSum / totalWeight) * 100) / 100;
+  return Math.round(weightedSum / totalWords);
 }

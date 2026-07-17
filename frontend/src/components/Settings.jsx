@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BACKEND_URL } from '../config';
+import { saveKeys, getKeys } from '../services/keyManager';
 
 /**
  * Settings configuration dashboard.
- * Saves keys to secure, encrypted disk storage with auto 24h reset.
+ * Saves keys to secure, encrypted browser local storage with auto 24h reset.
  */
 export default function Settings({ settings, setSettings }) {
   const [keysInput, setKeysInput] = useState('');
@@ -18,11 +18,8 @@ export default function Settings({ settings, setSettings }) {
 
   const fetchKeyStatus = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/settings/key/status`);
-      if (response.ok) {
-        const data = await response.json();
-        setHasKeysSaved(data.hasKey);
-      }
+      const keys = await getKeys();
+      setHasKeysSaved(keys.length > 0);
     } catch (err) {
       console.error('Failed to retrieve key status:', err);
     }
@@ -45,20 +42,8 @@ export default function Settings({ settings, setSettings }) {
     setStatusMsg(null);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/settings/key`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ openRouterKey: keysInput })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save keys on server.');
-      }
-
-      const data = await response.json();
-      setStatusMsg({ text: data.message || 'Keys encrypted and loaded successfully!', error: false });
+      await saveKeys(keysInput);
+      setStatusMsg({ text: 'Keys encrypted and loaded successfully in your browser!', error: false });
       setKeysInput('');
       fetchKeyStatus();
     } catch (err) {
@@ -71,11 +56,7 @@ export default function Settings({ settings, setSettings }) {
   const clearKeys = async () => {
     setIsSaving(true);
     try {
-      await fetch(`${BACKEND_URL}/api/settings/key`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ openRouterKey: '' })
-      });
+      await saveKeys(null);
       setStatusMsg({ text: 'API Keys list cleared successfully.', error: false });
       fetchKeyStatus();
     } catch (err) {
@@ -147,12 +128,12 @@ export default function Settings({ settings, setSettings }) {
               fontWeight: 700, 
               color: hasKeysSaved ? 'var(--color-human)' : 'var(--text-muted)' 
             }}>
-              {hasKeysSaved ? '✔ Keys Encrypted & Active (AES-256-CBC, Auto-Wipes in 24h)' : 'No Keys Configured'}
+              {hasKeysSaved ? '✔ Keys Encrypted & Active (AES-GCM, Auto-Wipes in 24h)' : 'No Keys Configured'}
             </span>
           </div>
 
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-            *API keys are encrypted in-memory and written on disk using standard AES-256-CBC blocks. Configured keys automatically expire and self-wipe from disk after 24 hours of creation for maximum safety.
+            *API keys are encrypted using native Web Crypto API (AES-GCM) and saved locally in your browser storage. Configured keys automatically expire and self-wipe after 24 hours of creation for maximum safety.
           </span>
         </div>
 
